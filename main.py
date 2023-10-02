@@ -1,6 +1,9 @@
+'''
+NESTOR FABIO CARDONA
+PROYECTO INDIVIDUAL OCTUBRE 2023
+'''
 # Bibliotecas necesarias y creación de la aplicación FastAPI:
-'''
-'''
+
 import pickle
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -14,32 +17,6 @@ from typing import List, Union
 app = FastAPI(title="Proyecto MLOps By Néstor Cardona")
 # @app.get("/")
 
-'''
- Debes crear las siguientes funciones para los endpoints que se consumirán en la API, recuerden que deben tener un decorador por cada una (@app.get(‘/’)).
-
-3)    def UsersRecommend( año : int ): Devuelve el top 3 de juegos MÁS recomendados por usuarios para el año dado. (reviews.recommend = True y comentarios positivos/neutrales)
-
-Ejemplo de retorno: [{"Puesto 1" : X}, {"Puesto 2" : Y},{"Puesto 3" : Z}]
-
-4)    def UsersNotRecommend( año : int ): Devuelve el top 3 de juegos MENOS recomendados por usuarios para el año dado. (reviews.recommend = False y comentarios negativos)
-
-Ejemplo de retorno: [{"Puesto 1" : X}, {"Puesto 2" : Y},{"Puesto 3" : Z}]
-
-
-
-5)    def sentiment_analysis( año : int ): Según el año de lanzamiento, se devuelve una lista con la cantidad de registros de reseñas de usuarios que se encuentren categorizados con un análisis de sentimiento.
-
-Ejemplo de retorno: {Negative = 182, Neutral = 120, Positive = 278}
-
-
-
-6)    def recomendacion_juego( id de producto ): Ingresando el id de producto, deberíamos recibir una lista con 5 juegos recomendados similares al ingresado.
-
-Si es un sistema de recomendación user-item:
-
-6)    def recomendacion_usuario( id de usuario ): Ingresando el id de un usuario, deberíamos recibir una lista con 5 juegos recomendados para dicho usuario.
-
-'''
 
 '''
 1) PLAY TIME GENRE
@@ -66,6 +43,14 @@ class Genre(Enum):
     Multiplayer = 'Multiplayer'
 @app.get("/PlayTimeGenre/{genero}")
 async def PlayTimeGenre(genero: Genre = None):
+    '''
+    PLAY TIME GENRE
+
+    Devuelve el año con mas horas jugadas para el género seleccionado.
+    '''
+    games['id'] = games['id'].astype(str)
+    items_hora['id'] = items_hora['id'].astype(str)
+
     # Paso 1: Unir los DataFrames en función de la columna 'id'
     merged_df = pd.merge(games, items_hora, on='id')
 
@@ -95,6 +80,7 @@ Ejemplo de retorno: {"Usuario con más horas jugadas para Género X" : us213ndjs
 async def UserForGenre(genero: Genre = None):
     '''
     USER FOR GENRE
+
     Debe devolver el usuario que acumula más horas jugadas para el género dado y 
     una lista de la acumulación de horas jugadas por año.
 
@@ -113,6 +99,7 @@ recomendados por usuarios para el año dado.
 async def UsersRecommend(year: int):
     '''
     USERS RECOMMEND
+
     Esta funcion Devuelve el top 3 de juegos MÁS recomendados 
     por usuarios para el año dado. 
     (reviews.recommend = True y comentarios positivos/neutrales)
@@ -148,19 +135,17 @@ async def UsersRecommend(year: int):
 def UsersNotRecommend( año: int ) : Devuelve el top 3 de juegos MENOS recomendados
 por usuarios para el año dado. (reviews.recommend = False y comentarios negativos)
 '''
-
 @app.get("/UsersNotRecommend/{year}")
 async def UsersNotRecommend(year: int):
     '''
-    USERS RECOMMEND
-    Esta funcion Devuelve el top 3 de juegos MENOS recomendados 
+    USERS NOT RECOMMEND
+
+    Esta función devuelve el top 3 de juegos MENOS recomendados 
     por usuarios para el año dado. (reviews.recommend = False y comentarios Negativos)
     '''
-    # Filtra las reseñas para el año dado, donde 'recommend' es True y el sentimiento es Negativo
-    #---filtered_reviews = reviews[(reviews['year'] == year) & (reviews['recommend'] == False) & (reviews['sentimiento'].isin(['Negativo']))]
-    #filtered_reviews = reviews[(reviews['year'] == year) & (reviews['recommend'] == True) & (reviews['sentimiento'].isin(['Positivo', 'Neutral']))]
+    # Filtra las reseñas para el año dado, donde 'recommend' es False y el sentimiento es Negativo
+    #filtered_reviews = reviews[(reviews['year'] == year) & (reviews['recommend'] == False) & (reviews['sentimiento'].isin(['Negativo']))]
     filtered_reviews = reviews[(reviews['year'] == year) & ~((reviews['recommend'] == True) & (reviews['sentimiento'].isin(['Positivo', 'Neutral'])))]
-
 
     # Agrupa las reseñas por juego ('id') y cuenta cuántas reseñas tiene cada juego
     game_counts = filtered_reviews['id'].value_counts().reset_index()
@@ -177,6 +162,13 @@ async def UsersNotRecommend(year: int):
     # Fusiona (merge) con el DataFrame 'games' para obtener los nombres de los juegos
     top_games_with_names = pd.merge(top_games, games[['id', 'app_name']], left_on='id', right_on='id', how='left')
 
+    # Convierte los valores numéricos en "count" a enteros
+    #--top_games_with_names['count'] = top_games_with_names['count'].astype(int)
+
+    # Convierte los valores numéricos en "count" a cadenas
+    top_games_with_names['count'] = top_games_with_names['count'].astype(str)
+
+
     # Crea los tres resultados independientes con el nombre del juego
     results = [{"Puesto {}: ".format(i + 1): {"Juego": game_data['app_name'], "Cantidad de reseñas": game_data['count']}} for i, (_, game_data) in enumerate(top_games_with_names.iterrows())]
 
@@ -186,29 +178,45 @@ async def UsersNotRecommend(year: int):
     return result_formateado
 
 
+
 '''
 5) ANALISIS DE SENTIMIENTO
 def sentiment_analysis( año: int ) : Según el año de lanzamiento, se devuelve 
 una lista con la cantidad de registros de reseñas de usuarios 
 que se encuentran categorizados con un análisis de sentimiento.
 '''
-@app.get("/sentiment_analysis/{año}")
-async def sentiment_analysis( año: int ):
+@app.get("/sentiment_analysis/{year}")
+async def sentiment_analysis(year: int):
     '''
     ANALISIS DE SENTIMIENTO
+
     Según el año de lanzamiento, se devuelve 
     una lista con la cantidad de registros de reseñas de usuarios 
     que se encuentran categorizados con un análisis de sentimiento.
     '''
-    # Filtrar reseñas para el año especificado y contar la cantidad de cada sentimiento
-    sentiment_counts = reviews[reviews['year'] == año]['sentimiento'].value_counts()
+    # Unir los dataframes usando el campo 'id' como clave
+    games['id'] = games['id'].astype(str)
+    reviews['id'] = reviews['id'].astype(str)
+    df = pd.merge(games, reviews, on=['id', 'year'], how='inner')
 
+    # Verificar y convertir la columna 'year' a tipo entero de manera segura
+    df['year'] = pd.to_numeric(df['year'], errors='coerce')
+    df['year'] = df['year'].astype('Int64')
+
+    # Filtrar reseñas para el año especificado
+    df_filtered = df[df['year'] == year]
+
+    # Contar la cantidad de reseñas para cada sentimiento
+    sentiment_counts = df_filtered['sentimiento'].value_counts()
+    
+    # Convertir el objeto Series a un diccionario
+    sentiment_counts_dict = sentiment_counts.to_dict()
+    
     # Devolver el resultado como un diccionario
     return {
-        'Negativo': sentiment_counts.get('Negativo', 0),
-        'Neutral': sentiment_counts.get('Neutral', 0),
-        'Positivo': sentiment_counts.get('Positivo', 0)
+        'sentiment_counts': sentiment_counts_dict
     }
+
 
 '''
 6) RECOMENDACION JUEGO
@@ -218,8 +226,9 @@ recomendados similares al ingresado.
 @app.get("/recomendacion_juego/{producto}")
 async def recomendacion_juego(producto: int):
     '''
-    RECOMENDACION JUEGO
-    Ingresando el id de producto, debes recibir 5 juegos recomendados 
+    RECOMENDACION DE 5 JUEGOS
+
+    Ingresando el id de producto o juego, recibe 5 juegos recomendados 
     similares al ingresado.
     '''
 
