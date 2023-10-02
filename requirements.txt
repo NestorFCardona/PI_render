@@ -23,3 +23,4 @@ tzdata==2023.3
 uvicorn==0.23.2
 watchfiles==0.20.0
 websockets==11.0.3
+scikit-learn==0.24.2
